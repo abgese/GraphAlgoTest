@@ -109,6 +109,30 @@ class MaxHeap:
 
         return i
 
+class UnionFind:
+    def __init__(self, numVertices):
+        self.numVertices = numVertices
+        self.parent = np.zeros(self.numVertices)
+        self.rank = np.zeros(self.numVertices)
+
+    def Union(i,j):
+        if(self.rank[i] > self.rank[j]):
+            parent[j] = i
+        elif(self.rank[j] > self.rank[i]):
+            parent[i] = j
+        else:
+            parent[i] = j
+            rank[j] += 1
+
+    def Find(i):
+        if(self.parent[i] != i and self.parent[i] != 0):
+            self.parent[i] = self.Find(self.parent[i])
+        return self.parent[i]
+
+    def MakeSet(i):
+        self.parent[i] = i
+        self.rank[i] = 1
+
 
 def HeapSort(arr, weightIndex):
     H = MaxHeap(weightIndex=weightIndex)
@@ -195,11 +219,24 @@ def MBWDjikstraHeap(G, s, t):
 
 def MBWKruskal(G, s, t):
     edgeList = []
-    tree = np.array([i for i in range(G.numVertices)])
+    subTrees = UnionFind(G.numVertices)
+    maxSpanTree = Graph(G.numVertices,noEdges=True) #Graph with no edges on init
     bandwidth = np.zeros(G.numVertices)
+
     for i in range(G.numVertices):
         for w,wt in G.E[i]:
-            if(w>i):
+            if(w>i): # Ensure only unique edges considered
                 edgeList.append((i,w,wt))
 
     edgeList = HeapSort(edgeList,weightIndex=2)
+
+    for edge in edgeList:
+        if(subTrees.Find(edge[0]) == 0):
+            subTrees.MakeSet(edge[0])
+        if(subTrees.Find(edge[1]) == 0):
+            subTrees.MakeSet(edge[1])
+        if(subTrees.Find(edge[0]) != tree.Find(edge[1])):
+            maxSpanTree.AddEdge(edge)
+            subTrees.Union(edge[0],edge[1])
+
+    return MBWDjikstraHeap(maxSpanTree, s, t)
