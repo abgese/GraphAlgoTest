@@ -22,17 +22,18 @@ class Graph:
         self.avgNumEdges = avgNumEdges
 
         if(self.avgNumEdges != None):
-            numEdgeSelect = range(2 * self.avgNumEdges) # Number of edges will be sample from int range 0 to 2*avgNumEdges, thus on average there will be avgNumEdges
+            self.avgNumEdges -= 2 # number of extra edges needed
+            numEdgeSelect = range(2 * self.avgNumEdges) # Number of edges will be sample from int range(inclusive) 0 to 2*(avgNumEdges-2), thus on average there will be avgNumEdges
 
             for i in range(self.numVertices):
                 edgeSelect = np.random.rand(self.numVertices)
                 edgeSelect[i] = 0.0
                 for w in self.E[i]:
-                    edgeSelect[w] = 0.0 # remove edges already present from possible choice
+                    edgeSelect[w[0]] = 0.0 # remove edges already present from possible choice
 
-                numEdges = np.random.choice(numEdgeSelect)
+                numEdges = np.random.choice(numEdgeSelect) + 1# include edges added initially, the random variable we are sampling is X+2
                 numEdges = max(numEdges - len(self.E[i]), 0)
-                edgeSelectArgSort = np.argsort(-edgeSelect)[:numEdges]
+                edgeSelectArgSort = np.argsort(-edgeSelect)[:numEdges] #pick top numEdge values to decide the target vertices
 
                 for w in edgeSelectArgSort:
                     edgeWeight = random.randint(1, self.maxEdgeWeight) 
@@ -41,12 +42,11 @@ class Graph:
         elif(self.edgeProb != None):
             for i in range(self.numVertices - 2):
                 # Consider every edge only once to ensure correct probability of picking
-                edgeSelect = np.random.rand(self.numVertices - 2 - i) 
-                for j in range(len(edgeSelect)):
+                for j in range(i+2,self.numVertices):
                     # Considers all vertices from i+2 to numVertices - 1 (i+1 is already connected). Also for i == 0 the last vertex is ignored
-                    if(edgeSelect[j] <= self.edgeProb not (i+2+j == self.numVertices - 1 and i==0)):
+                    if(np.random.random() <= self.edgeProb and not (j == self.numVertices - 1 and i==0)):
                         edgeWeight = random.randint(1, self.maxEdgeWeight) 
-                        self.AddEdge((i,i+2+j,edgeWeight)) 
+                        self.AddEdge((i,j,edgeWeight)) 
 
         else:
             raise Exception("Requires Either average number of edges per vertex or percentage of edges")
@@ -73,38 +73,38 @@ class MaxHeap:
     def Delete(self, i, heapIndex=[]):
         if(i >= self.numElements):
             raise Exception("Cannot delete element outside of range of Heap")
-        self.heapElements[i], self.heapElements[self.numElements - 1] = self.heapElements[self.numElements - 1], self.heapElements[i] # Swap i'th value with last value
+        self.heapElements[i].weight, self.heapElements[self.numElements - 1].weight = self.heapElements[self.numElements - 1].weight, self.heapElements[i].weight # Swap i'th value with last value
         if(len(heapIndex) > 0):
             #swap heap index values
             heapIndex[self.heapElements[i].key], heapIndex[self.heapElements[self.numElements - 1].key] = heapIndex[self.heapElements[self.numElements - 1].key], heapIndex[self.heapElements[i].key]
         self.heapElements.pop()
         self.numElements -= 1
+        
+        if(self.numElements == i):
+            return
 
-        parent = max(int((i-1)/2),0)
+        parent = (i-1)//2
         while(i > 0 and self.heapElements[i].weight > self.heapElements[parent].weight):
             self.heapElements[i], self.heapElements[parent] = self.heapElements[parent], self.heapElements[i]
             if(len(heapIndex) > 0):
                 #swap heap index values
                 heapIndex[self.heapElements[i].key], heapIndex[self.heapElements[parent].key] = heapIndex[self.heapElements[parent].key], heapIndex[self.heapElements[i].key]
             i = parent
-            parent = max(int((i-1)/2),0)
+            parent = (i-1)//2
 
         while(2*i + 1 < self.numElements):
-            maxVal = self.heapElements[i]
             maxInd = i
-            if(maxVal.weight < self.heapElements[2*i + 1].weight):
-                maxVal = self.heapElements[2*i + 1]
+            if(self.heapElements[maxInd].weight < self.heapElements[2*i + 1].weight):
                 maxInd = 2*i + 1
 
-            if(2*i + 2 < self.numElements and maxVal.weight< self.heapElements[2*i + 2].weight):
-                maxVal = self.heapElements[2*i + 2]
+            if(2*i + 2 < self.numElements and self.heapElements[maxInd].weight< self.heapElements[2*i + 2].weight):
                 maxInd = 2*i + 2
 
             if(maxInd == i):
                 break
 
             else:
-                self.heapElements[i], self.heapElements[maxInd] = self.heapElements[maxInd], self.heapElements[i]
+                self.heapElements[i].weight, self.heapElements[maxInd].weight = self.heapElements[maxInd].weight, self.heapElements[i].weight
                 if(len(heapIndex) > 0):
                     #swap heap index values
                     heapIndex[self.heapElements[i].key], heapIndex[self.heapElements[maxInd].key] = heapIndex[self.heapElements[maxInd].key], heapIndex[self.heapElements[i].key]
@@ -116,16 +116,13 @@ class MaxHeap:
         i = self.numElements - 1
         if(len(heapIndex) > 0):
             heapIndex[val.key] = i
-
-        parent = max(int((i-1)/2),0)
+        parent = (i-1)//2
         while(i > 0 and self.heapElements[i].weight > self.heapElements[parent].weight):
             self.heapElements[i], self.heapElements[parent] = self.heapElements[parent], self.heapElements[i]
             if(len(heapIndex) > 0):
                 heapIndex[self.heapElements[i].key], heapIndex[self.heapElements[parent].key] = heapIndex[self.heapElements[parent].key], heapIndex[self.heapElements[i].key]
             i = parent
-            parent = max(int((i-1)/2),0)
-
-        return i
+            parent = (i-1)//2
 
 class UnionFind:
     def __init__(self, numVertices):
@@ -171,7 +168,7 @@ FRINGE = 1
 INTREE = 2
 def MBWDjikstraNoHeap(G, s, t):
     status = np.zeros(G.numVertices, dtype=int)
-    bandwidth = np.zeros(G.numVertices)
+    bandwidth = np.zeros(G.numVertices, dtype=int)
     parent = np.array([ -1 for i in range(G.numVertices)])
     status[s] = INTREE
     numFringes = 0
@@ -182,8 +179,8 @@ def MBWDjikstraNoHeap(G, s, t):
         numFringes += 1
 
     while(numFringes > 0):
-        maxVal = bandwidth[0]
-        maxIndex = 0
+        maxVal = -1
+        maxIndex = -1
         numFringes -= 1
         for i in range(G.numVertices):
             if(status[i] == FRINGE and maxVal < bandwidth[i]):
@@ -208,7 +205,7 @@ def MBWDjikstraNoHeap(G, s, t):
 
 def MBWDjikstraHeap(G, s, t):
     status = np.zeros(G.numVertices, dtype=int)
-    bandwidth = np.zeros(G.numVertices)
+    bandwidth = np.zeros(G.numVertices, dtype=int)
     parent = np.array([ -1 for i in range(G.numVertices)])
     heapIndex = np.array([ -1 for i in range(G.numVertices)])
     status[s] = INTREE
@@ -240,9 +237,9 @@ def MBWDjikstraHeap(G, s, t):
 
     return bandwidth, parent
 
-def MBWinTree(G, s, t): # DFS -> Greedy works since no more than one path between two vertices in Tree
+def MBWinTree(G, s, t): # DFS -> Works since no more than one path between two vertices in Tree
     status = np.zeros(G.numVertices, dtype=int)
-    bandwidth = np.zeros(G.numVertices)
+    bandwidth = np.zeros(G.numVertices, dtype=int)
     parent = np.array([ -1 for i in range(G.numVertices)])
     vertexStack = [] #Using stack for iterative form of DFS
     status[s] = 1
@@ -275,7 +272,7 @@ def MBWKruskal(G, s, t):
     for i in range(G.numVertices):
         for w,wt in G.E[i]:
             if(w>i): # Ensure only unique edges considered
-                edgeList.append(HeapNode(key=(i,w),weight=wt))
+                edgeList.append(HeapNode(key=[i,w],weight=wt))
                 
     edgeList = HeapSort(edgeList)
     for edge in edgeList:
@@ -287,5 +284,5 @@ def MBWKruskal(G, s, t):
             maxSpanTree.AddEdge((edge.key[0],edge.key[1],edge.weight))
             subTrees.Union(edge.key[0],edge.key[1])
 
-    # return maxSpanTree
+    # return MBW path in maxSpanTree
     return MBWinTree(maxSpanTree, s, t)
